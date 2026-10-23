@@ -1,3 +1,4 @@
-build/chrome-*/
+﻿build/chrome-*/
 build/dom*.html
-build/cdp.js
+build/cdp*.js
+build/ui-live.png
