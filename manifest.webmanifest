@@ -1,0 +1,21 @@
+{
+  "name": "Möbius Music · 莫比乌斯音乐",
+  "short_name": "Möbius Music",
+  "description": "本地离线音乐播放器：导入手机里的音乐，建立播放列表，无需登录。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#06070c",
+  "theme_color": "#06070c",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
