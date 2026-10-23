@@ -1,7 +1,7 @@
 /* Service Worker：应用外壳离线缓存 */
 'use strict';
 
-const CACHE = 'mobius-music-v5';
+const CACHE = 'mobius-music-v6';
 const ASSETS = [
   './',
   './index.html',

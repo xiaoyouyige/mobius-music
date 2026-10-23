@@ -218,7 +218,7 @@ mobius-music/
 
 **7. 想更新应用**
 
-替换文件后，把 `sw.js` 里的 `CACHE = 'mobius-music-v5'` 改成 `v6`，重新部署；手机打开一次即可更新缓存。
+替换文件后，把 `sw.js` 里的 `CACHE = 'mobius-music-v6'` 改成 `v7`，重新部署；手机打开一次即可更新缓存。
 
 ---
 

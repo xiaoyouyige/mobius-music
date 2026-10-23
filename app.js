@@ -1259,9 +1259,12 @@
   function registerSW() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'http:' && location.protocol !== 'https:') return;
-    window.addEventListener('load', () => {
+    const doReg = () => {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
-    });
+    };
+    // init() 是异步的，load 可能已经触发，不能再等 load 事件
+    if (document.readyState === 'complete') doReg();
+    else window.addEventListener('load', doReg, { once: true });
   }
 
   function maybeShowInstallHint() {
