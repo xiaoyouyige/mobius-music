@@ -497,7 +497,11 @@
     state.repeat = state.repeat === 'off' ? 'all' : state.repeat === 'all' ? 'one' : 'off';
     localStorage.setItem('mm.repeat', state.repeat);
     updateRepeatUI();
-    toast({ off: '循环已关闭', all: '列表循环', one: '单曲循环' }[state.repeat]);
+    toast({
+      off: '循环关闭',
+      all: '列表循环：播完自动下一首',
+      one: '单曲循环：重复当前歌曲',
+    }[state.repeat], 2200);
   }
 
   function updateRepeatUI() {
@@ -1322,7 +1326,14 @@
     $('btnPrev').addEventListener('click', prev);
     $('btnNext').addEventListener('click', () => next(false));
     $('btnShuffle').addEventListener('click', toggleShuffle);
-    $('btnRepeat').addEventListener('click', cycleRepeat);
+    let lastRepeatTap = 0;
+    $('btnRepeat').addEventListener('click', () => {
+      // 防止双击/连点一次跨两个模式（off → all → one）
+      const now = Date.now();
+      if (now - lastRepeatTap < 320) return;
+      lastRepeatTap = now;
+      cycleRepeat();
+    });
 
     $('btnClosePlayer').addEventListener('click', closePlayer);
     $('btnTrackMenu').addEventListener('click', () => {

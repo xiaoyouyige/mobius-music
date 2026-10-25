@@ -30,6 +30,7 @@
 html, body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
@@ -40,7 +41,7 @@ html, body {
 }
 
 body {
-  min-height: 100dvh;
+  min-height: 0;
   background:
     radial-gradient(1200px 700px at 78% -8%, rgba(167, 139, 250, 0.16), transparent 60%),
     radial-gradient(900px 600px at -10% 18%, rgba(125, 232, 255, 0.10), transparent 55%),
@@ -65,10 +66,19 @@ svg { display: block; }
 
 .app {
   position: relative;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: calc(var(--safe-top) + 18px) 18px calc(112px + var(--safe-bottom));
   max-width: 640px;
   margin: 0 auto;
+}
+
+.topbar,
+.searchBar,
+.toolbar {
+  flex: 0 0 auto;
 }
 
 .topbar {
@@ -237,7 +247,18 @@ svg { display: block; }
 
 /* ------------------------------------------------------------- library */
 
-.library { position: relative; }
+.library {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.library::-webkit-scrollbar { display: none; }
+.library > .empty.show { min-height: 100%; justify-content: center; }
 
 .empty {
   display: none;
@@ -716,18 +737,22 @@ input[type="range"]::-moz-range-thumb {
 .ctrl .badge {
   display: none;
   position: absolute;
-  top: 8px;
-  right: 7px;
-  width: 12px;
-  height: 12px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 19px;
+  height: 19px;
   border-radius: 50%;
-  background: #b9e9ff;
-  color: #06121c;
-  font-size: 8px;
+  background: #f472b6;
+  color: #1c0810;
+  font-size: 10px;
   font-weight: 800;
-  line-height: 12px;
+  line-height: 19px;
   text-align: center;
+  box-shadow: 0 0 0 2px rgba(8, 10, 16, 0.9);
 }
+.ctrl.repeat-one { color: #ffc2dc; }
+.ctrl.repeat-one svg { opacity: 0.55; }
 .ctrl.repeat-one .badge { display: block; }
 
 .playMain {

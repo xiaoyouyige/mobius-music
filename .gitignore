@@ -2,3 +2,4 @@
 build/dom*.html
 build/cdp*.js
 build/ui-live.png
+build/ui-fixed.png
