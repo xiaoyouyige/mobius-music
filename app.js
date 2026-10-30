@@ -4,6 +4,7 @@
 (function () {
   'use strict';
 
+  const APP_VERSION = '1.0.9';
   const $ = (id) => document.getElementById(id);
   const audio = $('audio');
 
@@ -305,6 +306,9 @@
   }
 
   function startAudio(t, blob) {
+    if (t.size && blob.size && Math.abs(blob.size - t.size) > 8) {
+      toast(`音频数据异常：${fmtBytes(blob.size)} / 记录 ${fmtBytes(t.size)}`);
+    }
     if (currentAudioUrl) {
       try { URL.revokeObjectURL(currentAudioUrl); } catch (e) { /* ignore */ }
       currentAudioUrl = null;
@@ -959,8 +963,65 @@
       sheet.appendChild(sheetButton(ICONS.info, '修复所有乱码名称', repairAllNames, { sub: '批量' }));
     }
 
+    sheet.appendChild(sheetButton(ICONS.info, '版本与诊断', showDiagnostics, { sub: `v${APP_VERSION}` }));
     sheet.appendChild(sheetButton(ICONS.info, '导入说明', showHelp));
     openSheet();
+  }
+
+  function diagnosticsText() {
+    const cur = state.currentId ? byId(state.currentId) : null;
+    const cached = state.currentId ? audioCache.get(state.currentId) : null;
+    const dur = isFinite(audio.duration) ? Math.round(audio.duration) : 0;
+    const pos = Math.round(audio.currentTime || 0);
+    return [
+      `版本：${APP_VERSION}`,
+      `歌曲：${state.tracks.length} 首`,
+      `队列：${state.queue.length} 首 · 当前第 ${state.qIndex + 1} 首`,
+      `循环：${state.repeat} · 随机：${state.shuffle ? '开' : '关'}`,
+      cur ? `当前：${cur.title}` : '当前：无',
+      `音频时长：${dur ? dur + 's' : '未加载'} · 进度：${pos}s`,
+      `缓存音频：${cached ? fmtBytes(cached.size) : '未加载'} · 记录大小：${cur && cur.size ? fmtBytes(cur.size) : '—'}`,
+      `Service Worker：${navigator.serviceWorker && navigator.serviceWorker.controller ? '已接管' : '未接管'}`,
+    ].join('\n');
+  }
+
+  function showDiagnostics() {
+    const sheet = sheetBase('版本与诊断');
+    const hint = document.createElement('div');
+    hint.className = 'sheetHint';
+    hint.textContent = diagnosticsText();
+    sheet.appendChild(hint);
+
+    sheet.appendChild(sheetButton(ICONS.info, '强制更新到最新版', forceUpdate, { sub: '清缓存并重载' }));
+    sheet.appendChild(sheetButton(ICONS.info, '存储自检', async () => {
+      toast('正在测试本地存储…');
+      const r = await MusicDB.selfTest();
+      toast(r.ok ? '存储写入正常（分片测试通过）' : `存储异常：${r.error || '未知错误'}`);
+    }));
+
+    const btn = document.createElement('button');
+    btn.className = 'sheetCancel';
+    btn.textContent = '关闭';
+    btn.addEventListener('click', closeSheet);
+    sheet.appendChild(btn);
+    openSheet();
+  }
+
+  async function forceUpdate() {
+    toast('正在清除旧缓存…');
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+    } catch (e) { /* ignore */ }
+    try {
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch (e) { /* ignore */ }
+    setTimeout(() => location.reload(), 500);
   }
 
   async function repairAllNames() {

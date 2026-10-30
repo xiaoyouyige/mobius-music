@@ -1,7 +1,7 @@
 /* Service Worker：应用外壳离线缓存 */
 'use strict';
 
-const CACHE = 'mobius-music-v8';
+const CACHE = 'mobius-music-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -54,14 +54,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 静态资源：缓存优先 + 后台更新
+  // 静态资源：网络优先，失败回退缓存（保证更新立即生效）
   event.respondWith(
-    caches.match(req).then((hit) => {
-      if (hit) {
-        fetch(req).then((res) => put(req, res)).catch(() => {});
-        return hit;
-      }
-      return fetch(req).then((res) => { put(req, res.clone()); return res; });
-    }),
+    fetch(req)
+      .then((res) => { put(req, res.clone()); return res; })
+      .catch(() => caches.match(req).then((hit) => hit || fetch(req))),
   );
 });

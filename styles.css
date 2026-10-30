@@ -870,6 +870,7 @@ body.playing .playMain .icoPlay { display: none; }
   line-height: 1.6;
   color: var(--muted);
   padding: 4px 8px 10px;
+  white-space: pre-line;
 }
 .errList {
   margin: 2px 0 8px;
