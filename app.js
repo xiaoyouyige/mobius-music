@@ -135,12 +135,8 @@
 
   /* ------------------------------------------------------- rendering */
 
-  function sortAndFilter() {
-    const q = state.query.trim().toLowerCase();
-    let arr = state.tracks.filter((t) => {
-      if (!q) return true;
-      return [t.title, t.artist, t.album, t.name].some((s) => (s || '').toLowerCase().includes(q));
-    });
+  function sortTracks(list) {
+    const arr = list.slice();
     if (state.sort === 'title') {
       arr.sort((a, b) => a.title.localeCompare(b.title, 'zh-Hans-CN', { numeric: true }));
     } else if (state.sort === 'artist') {
@@ -151,9 +147,35 @@
     return arr;
   }
 
+  function sortAndFilter() {
+    const q = state.query.trim().toLowerCase();
+    const list = q
+      ? state.tracks.filter((t) => [t.title, t.artist, t.album, t.name].some((s) => (s || '').toLowerCase().includes(q)))
+      : state.tracks;
+    return sortTracks(list);
+  }
+
+  /** 播放队列永远取整个音乐库（搜索只影响显示，不影响播放顺序） */
+  function allSortedIds() {
+    return sortTracks(state.tracks).map((t) => t.id);
+  }
+
+  function ensureQueue() {
+    if (state.queue.length <= 1 && state.tracks.length > 1) {
+      const ids = allSortedIds();
+      state.queue = ids;
+      state.qIndex = Math.max(0, ids.indexOf(state.currentId));
+    }
+  }
+
   function updateMeta() {
     const total = state.tracks.reduce((s, t) => s + (t.size || 0), 0);
     $('libMeta').textContent = state.tracks.length ? `${state.tracks.length} 首 · ${fmtBytes(total)}` : '还没有音乐';
+  }
+
+  function updateQueueLabel() {
+    const el = document.getElementById('queueLabel');
+    if (el) el.textContent = state.queue.length ? `播放队列 · ${state.queue.length}` : '播放队列';
   }
 
   function render() {
@@ -234,7 +256,7 @@
 
     row.append(cover, text, time, more);
     row.addEventListener('click', () => {
-      const ids = state.filtered.map((x) => x.id);
+      const ids = allSortedIds();
       state.queue = state.shuffle ? [t.id, ...shuffleArr(ids.filter((x) => x !== t.id))] : ids;
       state.qIndex = state.queue.indexOf(t.id);
       if (state.qIndex < 0) { state.queue.unshift(t.id); state.qIndex = 0; }
@@ -320,6 +342,7 @@
   }
 
   function updateNowUI() {
+    updateQueueLabel();
     const t = state.currentId ? byId(state.currentId) : null;
     const mini = $('mini');
 
@@ -429,12 +452,12 @@
   }
 
   function playAll(forceShuffle) {
-    if (!state.filtered.length) {
-      toast(state.tracks.length ? '没有可播放的歌曲' : '先导入音乐');
+    if (!state.tracks.length) {
+      toast('先导入音乐');
       return;
     }
     if (forceShuffle) state.shuffle = true;
-    const ids = state.shuffle ? shuffleArr(state.filtered.map((t) => t.id)) : state.filtered.map((t) => t.id);
+    const ids = state.shuffle ? shuffleArr(allSortedIds()) : allSortedIds();
     state.queue = ids;
     state.qIndex = 0;
     $('btnShuffle').classList.toggle('on', state.shuffle);
@@ -442,6 +465,7 @@
   }
 
   function next(auto) {
+    ensureQueue();
     if (!state.queue.length) return;
     if (auto && state.repeat === 'one') {
       audio.currentTime = 0;
@@ -467,6 +491,7 @@
       audio.currentTime = 0;
       return;
     }
+    ensureQueue();
     if (!state.queue.length) return;
     let i = state.qIndex - 1;
     if (i < 0) i = state.repeat === 'all' ? state.queue.length - 1 : 0;
@@ -484,12 +509,13 @@
       state.queue = cur ? [cur, ...shuffleArr(rest)] : shuffleArr(rest);
       state.qIndex = 0;
     } else if (!state.shuffle && state.currentId) {
-      const ids = state.filtered.map((t) => t.id);
+      const ids = allSortedIds();
       const cur = state.currentId;
       if (!ids.includes(cur)) ids.unshift(cur);
       state.queue = ids;
       state.qIndex = Math.max(0, ids.indexOf(cur));
     }
+    updateQueueLabel();
     toast(state.shuffle ? '随机播放已开启' : '随机播放已关闭');
   }
 
@@ -984,7 +1010,7 @@
   function trackMenu(t) {
     const sheet = sheetBase(t.title);
     sheet.appendChild(sheetButton(ICONS.play, '立即播放', () => {
-      const ids = state.filtered.map((x) => x.id);
+      const ids = allSortedIds();
       state.queue = ids.includes(t.id) ? ids : [t.id, ...ids];
       state.qIndex = state.queue.indexOf(t.id);
       playTrack(t.id);
@@ -1084,7 +1110,7 @@
   }
 
   function queueSheet() {
-    const sheet = sheetBase('播放队列');
+    const sheet = sheetBase(`播放队列 · ${state.queue.length} 首`);
     const wrap = document.createElement('div');
     wrap.className = 'queueList';
     if (!state.queue.length) {
@@ -1168,8 +1194,8 @@
     const pos = parseFloat(localStorage.getItem('mm.pos') || '0');
     if (!lastId || !byId(lastId)) return;
     state.currentId = lastId;
-    if (state.filtered.length) {
-      state.queue = state.filtered.map((t) => t.id);
+    if (state.tracks.length) {
+      state.queue = allSortedIds();
       state.qIndex = Math.max(0, state.queue.indexOf(lastId));
     }
     updateNowUI();
@@ -1206,7 +1232,21 @@
       }
       updateProgress();
     });
-    audio.addEventListener('ended', () => next(true));
+    let lastAutoNext = 0;
+    const autoNext = () => {
+      const now = Date.now();
+      if (now - lastAutoNext < 1200) return;
+      if (!state.currentId) return;
+      lastAutoNext = now;
+      next(true);
+    };
+    audio.addEventListener('ended', autoNext);
+    // iOS 上 ended 偶发不触发：接近结尾时用进度兜底推进
+    audio.addEventListener('timeupdate', () => {
+      const d = audio.duration;
+      if (!d || !isFinite(d)) return;
+      if (audio.currentTime >= d - 0.35) autoNext();
+    });
     audio.addEventListener('error', () => {
       if (audio.src) toast('这首音频无法播放，可能格式不受支持');
     });
